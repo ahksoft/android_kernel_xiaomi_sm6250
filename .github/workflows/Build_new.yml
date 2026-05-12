@@ -35,7 +35,7 @@ jobs:
 
           # Enables many DroidSpaces requirements (Namespaces, CGroups, OverlayFS)
           lxc: true
-          lxc-patch: true
+          lxc-patch: false
           
           # Packaging
           anykernel3: true
