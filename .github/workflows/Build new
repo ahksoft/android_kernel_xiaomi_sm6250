@@ -1,0 +1,37 @@
+name: Xiaomi SM6250 Kernel Build
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Build Kernel
+        uses: dabao1955/kernel_build_action@v1
+        with:
+          kernel-url: https://github.com
+          kernel-branch: master
+          config: joyeuse_user_defconfig
+          arch: arm64
+          android-version: 11
+          
+          # Fixed Toolchain (Clang r416183b is often r416183b1 in AOSP)
+          aosp-gcc: true
+          aosp-clang: true
+          aosp-clang-version: r416183b
+          
+          # Built-in KernelSU Next Integration
+          ksu: true
+          ksu-other: true
+          ksu-url: https://github.com
+          ksu-version: next-legacy
+
+          # Enables many DroidSpaces requirements (Namespaces, CGroups, OverlayFS)
+          lxc: true
+          lxc-patch: true
+          
+          # Packaging
+          anykernel3: true
+          release: true
