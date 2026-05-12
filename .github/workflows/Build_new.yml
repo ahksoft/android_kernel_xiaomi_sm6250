@@ -8,6 +8,11 @@ jobs:
     permissions:
       contents: write
     steps:
+    # ADD THIS STEP FIRST TO INSTALL DEPENDENCIES
+      - name: Install Coccinelle Dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coccinelle
       - name: Android Kernel Build Action
         uses: dabao1955/kernel_build_action@v1.10.1
         with:
