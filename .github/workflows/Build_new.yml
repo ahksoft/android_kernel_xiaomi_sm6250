@@ -13,7 +13,7 @@ jobs:
         with:
           kernel-url: https://github.com/ahksoft/android_kernel_xiaomi_sm6250
           kernel-branch: sixteen-qpr2
-          config: Kconfig
+          config: defconfig
           arch: arm64
           android-version: 16
           
@@ -25,8 +25,8 @@ jobs:
           # Built-in KernelSU Next Integration
           ksu: true
           ksu-other: true
-          ksu-url: https://github.com
-          ksu-version: next-legacy
+          ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
+          ksu-version: main
 
           # Enables many DroidSpaces requirements (Namespaces, CGroups, OverlayFS)
           lxc: true
