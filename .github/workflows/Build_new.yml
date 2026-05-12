@@ -26,7 +26,7 @@ jobs:
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
-          ksu-version: main
+          ksu-version: legacy-susfs
 
           # Enables many DroidSpaces requirements (Namespaces, CGroups, OverlayFS)
           lxc: true
