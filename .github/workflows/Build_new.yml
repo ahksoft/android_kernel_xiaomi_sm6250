@@ -13,7 +13,7 @@ jobs:
         with:
           kernel-url: https://github.com/ahksoft/android_kernel_xiaomi_sm6250
           kernel-branch: sixteen-qpr2
-          config: joyeuse_user_defconfig
+          config: Kconfig
           arch: arm64
           android-version: 16
           
