@@ -8,8 +8,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Build Kernel
-        uses: dabao1955/kernel_build_action@v1
+      - name: Android Kernel Build Action
+        uses: dabao1955/kernel_build_action@v1.10.1
         with:
           kernel-url: https://github.com
           kernel-branch: master
