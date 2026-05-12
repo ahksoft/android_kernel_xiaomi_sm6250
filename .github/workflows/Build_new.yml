@@ -11,7 +11,7 @@ jobs:
       - name: Android Kernel Build Action
         uses: dabao1955/kernel_build_action@v1.10.1
         with:
-          kernel-url: https://github.com
+          kernel-url: https://github.com/ahksoft/android_kernel_xiaomi_sm6250
           kernel-branch: sixteen-qpr2
           config: joyeuse_user_defconfig
           arch: arm64
