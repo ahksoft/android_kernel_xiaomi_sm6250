@@ -15,12 +15,12 @@ jobs:
           kernel-branch: master
           config: joyeuse_user_defconfig
           arch: arm64
-          android-version: 11
+          android-version: 16
           
           # Fixed Toolchain (Clang r416183b is often r416183b1 in AOSP)
           aosp-gcc: true
-          aosp-clang: true
-          aosp-clang-version: r416183b
+          aosp_clang_version: r450784d # Recommended stable version
+          android_ndk: true
           
           # Built-in KernelSU Next Integration
           ksu: true
