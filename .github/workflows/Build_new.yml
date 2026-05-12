@@ -21,7 +21,7 @@ jobs:
           aosp-gcc: true
           aosp_clang_version: r450784d # Recommended stable version
           android_ndk: true
-          
+          aosp_gcc: false 
           # Built-in KernelSU Next Integration
           ksu: true
           ksu-other: true
