@@ -1,0 +1,72 @@
+name: Build Xiaomi SM6250 Kernel
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Kernel
+        uses: dabyd64/android-kernel-build-action@master
+        with:
+          kernel-url: https://github.com/ahksoft/android_kernel_xiaomi_sm6250
+          kernel-branch: master
+          config: joyeuse_user_defconfig
+          arch: arm64
+          aosp-gcc: true
+          aosp-clang: true
+          # Select Clang version compatible with your source (usually 12.0 or 14.0)
+          aosp-clang-version: r416183b
+          
+          # Custom commands to inject DroidSpaces config and KSU Next
+          extra-cmd: |
+            # 1. Inject DroidSpaces Configurations into defconfig
+            echo "CONFIG_SYSCTL=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_SYSVIPC=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_POSIX_MQUEUE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NAMESPACES=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_PID_NS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_UTS_NS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IPC_NS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_SECCOMP=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_SECCOMP_FILTER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUPS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUP_DEVICE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUP_PIDS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_MEMCG=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUP_SCHED=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_FAIR_GROUP_SCHED=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUP_FREEZER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_CGROUP_NET_PRIO=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_DEVTMPFS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_OVERLAY_FS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_FW_LOADER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_FW_LOADER_USER_HELPER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_FW_LOADER_COMPRESS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NET_NS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_VETH=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_BRIDGE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NETFILTER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_BRIDGE_NETFILTER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NETFILTER_ADVANCED=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_CONNTRACK=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_CONNTRACK_IPV4=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_NF_IPTABLES=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_NF_FILTER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_NAT=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_TABLES=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_NAT_IPV4=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_NF_NAT=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_NF_TARGET_MASQUERADE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NETFILTER_XT_TARGET_MASQUERADE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NETFILTER_XT_TARGET_TCPMSS=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_CONNTRACK_NETLINK=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_NF_NAT_REDIRECT=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_ADVANCED_ROUTER=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_IP_MULTIPLE_TABLES=y" >> arch/arm64/configs/joyeuse_user_defconfig
+            echo "CONFIG_ANDROID_PARANOID_NETWORK=n" >> arch/arm64/configs/joyeuse_user_defconfig
+
+            # 2. Integrate KernelSU Next (Legacy)
+            curl -LSs "https://githubusercontent.com" | bash -s next-legacy
+            
