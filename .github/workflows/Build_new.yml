@@ -1,4 +1,5 @@
 name: Xiaomi SM6250 Kernel Build
+
 on:
   workflow_dispatch:
 
@@ -7,12 +8,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-    # ADD THIS STEP FIRST TO INSTALL DEPENDENCIES
-      - name: Install Coccinelle Dependency
+      # Step 1: Checkout kernel source
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v3
+        with:
+          repository: ahksoft/android_kernel_xiaomi_sm6250
+          ref: sixteen-qpr2
+
+      # Step 2: Install dependencies (Coccinelle for kernel patching)
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y coccinelle
+          sudo apt-get install -y coccinelle build-essential libncurses-dev bc bison flex
+
+      # Step 3: Kernel build using dabao1955 action
       - name: Android Kernel Build Action
         uses: dabao1955/kernel_build_action@v1.10.1
         with:
@@ -21,27 +32,25 @@ jobs:
           config: defconfig
           arch: arm64
           android-version: 16
-          
-          # Fixed Toolchain (Clang r416183b is often r416183b1 in AOSP)
-          #aosp-gcc: true
-          aosp_clang_version: r547379 # Recommended stable version
+
+          # Toolchain
+          aosp_clang_version: r547379
           android_ndk: true
-          aosp_gcc: false 
-          # Built-in KernelSU Next Integration
+          aosp_gcc: false
+
+          # KernelSU Next Integration
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
           ksu-version: legacy-susfs
 
-          # Enables many DroidSpaces requirements (Namespaces, CGroups, OverlayFS)
+          # DroidSpaces / container support
           lxc: true
           lxc-patch: false
-          
+
           # Packaging
           anykernel3: true
           release: true
 
-          # NEW: Forces the compiler to output verbose, step-by-step logs 
+          # Verbose build output
           extra-cmd: V=1
-
-  
