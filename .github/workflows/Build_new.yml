@@ -24,7 +24,7 @@ jobs:
           
           # Fixed Toolchain (Clang r416183b is often r416183b1 in AOSP)
           #aosp-gcc: true
-          aosp_clang_version: r450784d # Recommended stable version
+          aosp_clang_version: r547379 # Recommended stable version
           android_ndk: true
           aosp_gcc: false 
           # Built-in KernelSU Next Integration
