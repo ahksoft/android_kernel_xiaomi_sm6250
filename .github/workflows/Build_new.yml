@@ -41,13 +41,7 @@ jobs:
           anykernel3: true
           release: true
 
-          # NEW DIAGNOSTIC STEP: Captures the actual syntax/missing file error
-      - name: Output Actual Compilation Errors
-        if: steps.build_kernel.outcome == 'failure'
-        run: |
-          echo "==================== SEARCHING LOG FOR REAL ERROR ===================="
-          if [ -d "kernel/kernel/out" ]; then
-            find kernel/kernel/out -name "*.log" -exec tail -n 50 {} \;
-          fi
-          echo "======================================================================"
-          exit 1
+          # NEW: Forces the compiler to output verbose, step-by-step logs 
+          extra-cmd: V=1
+
+  
