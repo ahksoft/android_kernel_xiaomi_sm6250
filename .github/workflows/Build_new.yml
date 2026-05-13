@@ -24,17 +24,14 @@ jobs:
           sudo apt-get install -y coccinelle build-essential libncurses-dev bc bison flex clang lld \
             binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf
 
-            - name: Download AOSP Clang
-              run: |
-              wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/android-16/r416183b/clang-r416183b-linux-x86.tar.gz
-              tar -xf clang-r416183b-linux-x86.tar.gz -C $HOME/clang
-            - name: Build Kernel
-              uses: dabao1955/kernel_build_action@v1.10.1
-              with:
-              aosp-clang: false
-              other-clang-url: $HOME/clang
+      # 3. Download AOSP Clang manually
+      - name: Download AOSP Clang
+        run: |
+          mkdir -p $HOME/clang
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/android-16/r416183b/clang-r416183b-linux-x86.tar.gz
+          tar -xf clang-r416183b-linux-x86.tar.gz -C $HOME/clang
 
-      # 3. Apply source patches for CI build
+      # 4. Apply source patches for CI build
       - name: Patch kernel source for CI
         run: |
           # Fix netprio_cgroup.h (cgroup->id)
@@ -44,7 +41,7 @@ jobs:
           # Disable perf tracepoints
           scripts/config --disable TRACEPOINTS || true
 
-      # 4. Kernel build
+      # 5. Build Kernel
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@v1.10.1
         with:
@@ -53,9 +50,9 @@ jobs:
           config: defconfig
           arch: arm64
           android-version: 16
-          aosp-clang: true
-          aosp-gcc: true 
-          aosp-clang-version: r416183b
+          aosp-clang: false
+          aosp-gcc: true
+          other-clang-url: $HOME/clang
           ksu: false
           ksu-other: false
           lxc: true
