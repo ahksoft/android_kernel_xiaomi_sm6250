@@ -10,21 +10,32 @@ jobs:
       contents: write
 
     steps:
-      # Step 1: Checkout kernel source
+      # 1. Checkout kernel source
       - name: Checkout Kernel Source
         uses: actions/checkout@v3
         with:
           repository: ahksoft/android_kernel_xiaomi_sm6250
           ref: sixteen-qpr2
 
-      # Step 2: Install dependencies (Coccinelle for kernel patching)
+      # 2. Install build dependencies
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y coccinelle build-essential libncurses-dev bc bison flex
+          sudo apt-get install -y coccinelle build-essential libncurses-dev bc bison flex clang lld \
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf
 
-      # Step 3: Kernel build using dabao1955 action
-      - name: Android Kernel Build Action
+      # 3. Apply source patches for CI build
+      - name: Patch kernel source for CI
+        run: |
+          # Fix netprio_cgroup.h (cgroup->id)
+          sed -i 's/css->cgroup->id/cgroup_id(css->cgroup)/g' include/net/netprio_cgroup.h || true
+          # Declare missing 'ptep' in hugetlbpage.c
+          sed -i '235i pte_t *ptep;' arch/arm64/mm/hugetlbpage.c || true
+          # Disable perf tracepoints
+          scripts/config --disable TRACEPOINTS || true
+
+      # 4. Kernel build
+      - name: Build Kernel
         uses: dabao1955/kernel_build_action@v1.10.1
         with:
           kernel-url: https://github.com/ahksoft/android_kernel_xiaomi_sm6250
@@ -32,25 +43,11 @@ jobs:
           config: defconfig
           arch: arm64
           android-version: 16
-
-          # Toolchain
-          aosp_clang_version: r547379
-          android_ndk: true
-          aosp_gcc: false
-
-          # KernelSU Next Integration
+          aosp-clang: true
+          aosp-gcc: false
           ksu: false
           ksu-other: false
-          ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
-          ksu-version: legacy-susfs
-
-          # DroidSpaces / container support
           lxc: true
-          lxc-patch: false
-
-          # Packaging
           anykernel3: true
           release: true
-
-          # Verbose build output
-          extra-cmd: V=1
+          extra-make-args: -j$(nproc) V=1
