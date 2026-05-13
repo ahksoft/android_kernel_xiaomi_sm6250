@@ -39,8 +39,8 @@ jobs:
           aosp_gcc: false
 
           # KernelSU Next Integration
-          ksu: true
-          ksu-other: true
+          ksu: false
+          ksu-other: false
           ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
           ksu-version: legacy-susfs
 
