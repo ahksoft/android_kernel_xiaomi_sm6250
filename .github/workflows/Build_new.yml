@@ -22,14 +22,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y coccinelle build-essential libncurses-dev bc bison flex clang lld \
-            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf wget
 
-      # 3. Download AOSP Clang manually
-      - name: Download AOSP Clang
+      # 3. Download AOSP Clang r416183b1 manually
+      - name: Download AOSP Clang r416183b1
         run: |
           mkdir -p $HOME/clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/android-16/r416183b/clang-r416183b-linux-x86.tar.gz
-          tar -xf clang-r416183b-linux-x86.tar.gz -C $HOME/clang
+          wget https://storage.googleapis.com/android-build-prebuilts/clang/host/linux-x86/clang-r416183b1.tar.gz -O clang.tar.gz
+          tar -xf clang.tar.gz -C $HOME/clang
 
       # 4. Apply source patches for CI build
       - name: Patch kernel source for CI
