@@ -45,9 +45,10 @@ env:
   DEVICE_CODENAME: miatoll
   DEVICE_FRIENDLY: "Redmi Note 9S"
 
-  # Toolchain (AOSP Clang r416183b1 — matches your existing workflow)
-  CLANG_VERSION: r416183b1
-  CLANG_URL: https://storage.googleapis.com/android-build-prebuilts/clang/host/linux-x86/clang-r416183b1.tar.gz
+  # Toolchain: r383902b is correct for kernel 4.14 (Android R era, per ravindu644 toolchain guide)
+  # Source: googlesource archive (android-build-prebuilts bucket only hosts newer clang versions)
+  CLANG_VERSION: r383902b
+  CLANG_URL: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902b.tar.gz
   CLANG_DIR: ${{ github.workspace }}/toolchains/clang
 
   # GCC cross-compilers (from ravindu644 toolchain guide for 4.19-era Qualcomm kernels)
@@ -102,15 +103,35 @@ jobs:
       - name: 🔧 Download AOSP Clang ${{ env.CLANG_VERSION }}
         run: |
           mkdir -p ${{ env.CLANG_DIR }}
-          echo "Downloading Clang ${{ env.CLANG_VERSION }}..."
-          wget -q --show-progress \
-            "${{ env.CLANG_URL }}" \
-            -O /tmp/clang.tar.gz
+          echo "Downloading Clang ${{ env.CLANG_VERSION }} (correct version for kernel 4.14)..."
+
+          # Primary: ravindu644 releases mirror (direct .tar.gz, no redirect issues)
+          PRIMARY="https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902b.tar.gz"
+          # Fallback: googlesource archive
+          FALLBACK="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902b.tar.gz"
+
+          if curl -fL --retry 3 --retry-delay 5 -o /tmp/clang.tar.gz "$PRIMARY"; then
+            echo "Downloaded from primary mirror."
+          else
+            echo "Primary failed, trying fallback..."
+            curl -fL --retry 3 --retry-delay 5 -o /tmp/clang.tar.gz "$FALLBACK"
+          fi
+
           echo "Extracting..."
-          tar -xf /tmp/clang.tar.gz -C ${{ env.CLANG_DIR }} --strip-components=1
+          tar -xf /tmp/clang.tar.gz -C ${{ env.CLANG_DIR }}
           rm /tmp/clang.tar.gz
-          echo "Clang version:"
-          ${{ env.CLANG_DIR }}/bin/clang --version
+
+          # Find clang binary (may or may not be in a subdirectory)
+          CLANG_BIN=$(find ${{ env.CLANG_DIR }} -name "clang" -type f | head -1)
+          if [ -z "$CLANG_BIN" ]; then
+            echo "❌ clang binary not found after extraction!"
+            ls -la ${{ env.CLANG_DIR }}
+            exit 1
+          fi
+          CLANG_BIN_DIR=$(dirname "$CLANG_BIN")
+          echo "CLANG_BIN_DIR=$CLANG_BIN_DIR" >> $GITHUB_ENV
+          echo "Clang found at: $CLANG_BIN_DIR"
+          "$CLANG_BIN" --version
 
       # ── 5. Download AnyKernel3 ───────────────────────────────────────────
       - name: 📥 Clone AnyKernel3
@@ -251,7 +272,7 @@ jobs:
       # ── 9. Set up PATH and build vars ───────────────────────────────────
       - name: ⚙️ Configure build environment
         run: |
-          echo "${{ env.CLANG_DIR }}/bin" >> $GITHUB_PATH
+          echo "${{ env.CLANG_BIN_DIR }}" >> $GITHUB_PATH
           echo "/usr/lib/ccache" >> $GITHUB_PATH
           mkdir -p ${{ env.OUT_DIR }}
 
@@ -259,7 +280,7 @@ jobs:
       - name: 🛠️ Generate kernel .config
         working-directory: kernel_source
         run: |
-          export PATH="${{ env.CLANG_DIR }}/bin:$PATH"
+          export PATH="${{ env.CLANG_BIN_DIR }}:$PATH"
 
           # Build make args
           MAKE_ARGS=(
@@ -301,7 +322,7 @@ jobs:
       - name: 🔨 Compile kernel
         working-directory: kernel_source
         run: |
-          export PATH="${{ env.CLANG_DIR }}/bin:$PATH"
+          export PATH="${{ env.CLANG_BIN_DIR }}:$PATH"
 
           BUILD_START=$(date +%s)
 
