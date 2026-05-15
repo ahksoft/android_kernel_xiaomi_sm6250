@@ -328,8 +328,6 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu-
             CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
             CLANG_TRIPLE=aarch64-linux-gnu-
-            LLVM=1
-            LLVM_IAS=1
             O=${{ env.OUT_DIR }}
             -j$(nproc)
           )
@@ -360,33 +358,52 @@ jobs:
       - name: 🔨 Compile kernel
         working-directory: kernel_source
         run: |
+          set -o pipefail
           export PATH="${{ env.CLANG_BIN_DIR }}:$PATH"
 
           BUILD_START=$(date +%s)
 
-          make \
-            ARCH=${{ env.ARCH }} \
-            CC=clang \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            O=${{ env.OUT_DIR }} \
-            -j$(nproc) \
-            Image.gz-dtb dtbo.img 2>&1 | tee build.log
+          MAKE_CMD=(
+            make
+            ARCH=arm64
+            CC=clang
+            CLANG_TRIPLE=aarch64-linux-gnu-
+            CROSS_COMPILE=aarch64-linux-gnu-
+            CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
+            O=${{ env.OUT_DIR }}
+            -j$(nproc)
+          )
+
+          # Build main kernel image only — dtbo.img is NOT a valid standalone
+          # make target in this source tree and causes immediate failure.
+          echo "=== Building kernel Image ==="
+          "${MAKE_CMD[@]}" Image.gz-dtb 2>&1 | tee build.log
 
           BUILD_END=$(date +%s)
           BUILD_DIFF=$((BUILD_END - BUILD_START))
-          echo "Build completed in $((BUILD_DIFF / 60))m $((BUILD_DIFF % 60))s"
+          echo "Build time: $((BUILD_DIFF / 60))m $((BUILD_DIFF % 60))s"
 
-          # Verify output
-          if [ ! -f "${{ env.OUT_DIR }}/arch/arm64/boot/Image.gz-dtb" ]; then
-            echo "❌ ERROR: Kernel image not found! Build failed."
-            tail -50 build.log
+          # Check for Image.gz-dtb, fall back to Image.gz
+          BOOT_DIR="${{ env.OUT_DIR }}/arch/arm64/boot"
+          if [ -f "$BOOT_DIR/Image.gz-dtb" ]; then
+            echo "✅ Found Image.gz-dtb"
+            KERNEL_OUT="$BOOT_DIR/Image.gz-dtb"
+          elif [ -f "$BOOT_DIR/Image.gz" ]; then
+            echo "✅ Found Image.gz (no appended DTB)"
+            cp "$BOOT_DIR/Image.gz" "$BOOT_DIR/Image.gz-dtb"
+            KERNEL_OUT="$BOOT_DIR/Image.gz-dtb"
+          else
+            echo "❌ No kernel image found. Build failed."
+            echo "=== Last 80 lines of build.log ==="
+            tail -80 build.log
+            echo "=== Errors ==="
+            grep -n " error:" build.log | tail -30 || true
             exit 1
           fi
-          echo "✅ Kernel image built successfully."
+
+          # Try dtbo.img as best-effort (non-fatal)
+          echo "=== Attempting dtbo.img (best-effort) ==="
+          "${MAKE_CMD[@]}" dtbo.img 2>&1 || echo "⚠️ dtbo.img not supported by this source — skipping."
 
       # ── 12. Package with AnyKernel3 ──────────────────────────────────────
       - name: 📦 Package with AnyKernel3
@@ -429,7 +446,13 @@ jobs:
 
           # Copy kernel artifacts
           cp "$KERNEL_IMAGE" "$AK3_DIR/Image.gz-dtb"
-          [ -f "$DTBO_IMAGE" ] && cp "$DTBO_IMAGE" "$AK3_DIR/dtbo.img" || true
+          # Copy dtbo.img only if it was actually built (it is optional for this source)
+          if [ -f "$DTBO_IMAGE" ]; then
+            cp "$DTBO_IMAGE" "$AK3_DIR/dtbo.img"
+            echo "✅ dtbo.img included in zip"
+          else
+            echo "ℹ️ dtbo.img not found — not including in zip (expected for this source)"
+          fi
 
           # Build zip name
           KSU_TAG=""
@@ -460,9 +483,9 @@ jobs:
           path: ${{ github.workspace }}/${{ env.ZIPNAME }}
           retention-days: 7
 
-      # ── 14. Upload build log on failure ──────────────────────────────────
-      - name: 📋 Upload build log on failure
-        if: failure()
+      # ── 14. Upload build log (always) ────────────────────────────────────
+      - name: 📋 Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ env.DATE }}
