@@ -61,7 +61,7 @@ env:
 
 jobs:
   build:
-    name: Build Kernel for ${{ env.DEVICE_FRIENDLY }}
+    name: Build Kernel for Redmi Note 9S (miatoll)
     runs-on: ubuntu-22.04
     permissions:
       contents: write   # needed to create releases
@@ -416,18 +416,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: kernel-${{ env.DATE }}
-          name: "CustomKernel for ${{ env.DEVICE_FRIENDLY }} — ${{ env.DATE }}"
+          name: "CustomKernel for Redmi Note 9S — ${{ env.DATE }}"
           body: |
             ## 🏗️ Custom Kernel for Redmi Note 9S (miatoll)
 
             **Build date:** ${{ env.DATE }}
             **Kernel source:** [${{ env.KERNEL_REPO }}@${{ env.KERNEL_BRANCH }}](https://github.com/${{ env.KERNEL_REPO }}/tree/${{ env.KERNEL_BRANCH }})
             **Compiler:** AOSP Clang ${{ env.CLANG_VERSION }}
+            **KernelSU:** ${{ github.event.inputs.ENABLE_KSU }}
+            **LXC / Droidspaces:** ${{ github.event.inputs.ENABLE_LXC }}
 
             ### Features
             - ✅ Android 16 QPR2 base
-            - ${{ github.event.inputs.ENABLE_KSU == 'true' && '✅ KernelSU' || '❌ KernelSU (disabled)' }}
-            - ${{ github.event.inputs.ENABLE_LXC == 'true' && '✅ LXC / Droidspaces container support (namespaces, cgroups v1+v2, OverlayFS, POSIX mqueue, BPF)' || '❌ LXC / Droidspaces (disabled)' }}
+            - KernelSU: `${{ github.event.inputs.ENABLE_KSU }}`
+            - LXC / Droidspaces (namespaces, cgroups v1+v2, OverlayFS, POSIX mqueue, BPF): `${{ github.event.inputs.ENABLE_LXC }}`
             - ✅ AnyKernel3 flashable zip
 
             ### Supported devices
@@ -449,3 +451,4 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
