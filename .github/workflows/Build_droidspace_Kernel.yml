@@ -1,7 +1,7 @@
 name: Build Build Droidspace Kernel (miatoll)
 
 on:
-  workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
+  workflow_dispatch:
 
 env:
   KERNEL_SRC: 'https://github.com/ahksoft/android_kernel_xiaomi_sm6250'
@@ -10,10 +10,10 @@ env:
   ARCH: 'arm64'
   SUBARCH: 'arm64'
   
-  # AOSP Clang Compiler (Android 14 Compatible)
-  CLANG_URL: 'https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz'
+  # Highly stable integrated prebuilt toolchain for Snapdragon kernels
+  CLANG_URL: 'https://github.com/kdrag0n/proton-clang'
+  CLANG_BRANCH: 'master'
   
-  # AnyKernel3 Setup for flashable ZIP generation
   ANYKERNEL_URL: 'https://github.com/osm0sis/AnyKernel3'
   ANYKERNEL_BRANCH: 'master'
 
@@ -28,20 +28,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
-      
-      - name: Setup Clang Toolchain
+
+      - name: Setup Clang Toolchain (Proton)
         run: |
-          mkdir -p $GITHUB_WORKSPACE/clang
-          cd $GITHUB_WORKSPACE/clang
-          curl -Lo clang.tar.gz "${{ env.CLANG_URL }}"
-          tar -xzf clang.tar.gz
-          rm -rf clang.tar.gz
+          git clone --depth=1 -b ${{ env.CLANG_BRANCH }} ${{ env.CLANG_URL }} $GITHUB_WORKSPACE/clang
 
       - name: Checkout AnyKernel3
         run: |
-          cd $GITHUB_WORKSPACE
           git clone --depth=1 -b ${{ env.ANYKERNEL_BRANCH }} ${{ env.ANYKERNEL_URL }} AnyKernel3
-          # Clean up any generic components
           rm -rf AnyKernel3/.git AnyKernel3/README.md
 
       - name: Apply Droidspaces Container Fixes (Defconfig Patching)
@@ -50,7 +44,7 @@ jobs:
           
           echo "Patching $DEFCONFIG_PATH for Droidspaces container features..."
           
-          # Inject namespaces & proper systemd/container features
+          # Inject namespaces & container features
           echo "CONFIG_NAMESPACES=y" >> $DEFCONFIG_PATH
           echo "CONFIG_UTS_NS=y" >> $DEFCONFIG_PATH
           echo "CONFIG_IPC_NS=y" >> $DEFCONFIG_PATH
@@ -69,35 +63,24 @@ jobs:
           echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG_PATH
           echo "CONFIG_BTRFS_FS=y" >> $DEFCONFIG_PATH
           
-          # Disable quota settings if they cause mounting headaches under Android 14 container runtimes
+          # Disable quota settings if they cause mounting headaches
           sed -i 's/CONFIG_MSM_EXTRA_QUOTA=y/CONFIG_MSM_EXTRA_QUOTA=n/g' $DEFCONFIG_PATH || true
           
           echo "Defconfig modifications applied successfully."
 
       - name: Compile Kernel
         run: |
-          cd $GITHUB_WORKSPACE
-          
-          # Export compiler environments
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
-          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/clang/lib64:$LD_LIBRARY_PATH"
           
-          # Define compiler configurations
           MAKE_FLAGS=(
               ARCH=${{ env.ARCH }}
               SUBARCH=${{ env.SUBARCH }}
               CC=clang
-              LD=ld.lld
-              AR=llvm-ar
-              NM=llvm-nm
-              OBJCOPY=llvm-objcopy
-              OBJDUMP=llvm-objdump
-              STRIP=llvm-strip
               CROSS_COMPILE=aarch64-linux-gnu-
               CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           )
           
-          # Generate base .config from patched defconfig
+          # Generate base .config from defconfig
           make "${MAKE_FLAGS[@]}" vendor/${{ env.DEFCONFIG }}
           
           # Compile the image and built-in dtbs
@@ -105,10 +88,6 @@ jobs:
 
       - name: Package Kernel via AnyKernel3
         run: |
-          cd $GITHUB_WORKSPACE
-          
-          # Locate standard compiled output for miatoll 
-          # Checks for Image.gz-dtb first, fallback to standard Image.gz
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
               cp arch/arm64/boot/Image.gz-dtb AnyKernel3/Image.gz-dtb
           elif [ -f arch/arm64/boot/Image.gz ]; then
@@ -117,9 +96,8 @@ jobs:
               echo "Error: Compiled kernel target not found!" && exit 1
           fi
           
-          # Generate flashable zip packaging configuration
           cd AnyKernel3
-          sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh # Overrides strict checks for generic flashing test
+          sed -i 's/do.devicecheck=1/do.devicecheck=0/g' anykernel.sh
           zip -r9 ../PixelOS-miatoll-Droidspaces-Kernel.zip *
 
       - name: Upload Flashable Kernel Artifact
