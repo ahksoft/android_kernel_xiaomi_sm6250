@@ -41,7 +41,8 @@ env:
 
   # Device / build config
   ARCH: arm64
-  DEFCONFIG: vendor/miatoll-perf_defconfig   # confirmed correct for Redmi Note 9S
+  # Will be auto-detected at build time from what actually exists in the source tree
+  DEFCONFIG: auto
   DEVICE_CODENAME: miatoll
   DEVICE_FRIENDLY: "Redmi Note 9S"
 
@@ -282,9 +283,47 @@ jobs:
         run: |
           export PATH="${{ env.CLANG_BIN_DIR }}:$PATH"
 
-          # Build make args
+          CONFIGS_DIR="arch/arm64/configs"
+
+          echo "=== Available defconfigs in source tree ==="
+          find "$CONFIGS_DIR" -name "*defconfig*" | sort
+          echo "==========================================="
+
+          # Auto-detect defconfig — priority order for ahksoft/sixteen-qpr2.
+          # Your own workflow uses 'config: defconfig' which means bare 'defconfig'.
+          # We also try known miatoll names as fallback.
+          DEFCONFIG=""
+          for candidate in \
+            "defconfig" \
+            "vendor/miatoll-perf_defconfig" \
+            "miatoll-perf_defconfig" \
+            "miatoll_defconfig" \
+            "vendor/miatoll_defconfig"
+          do
+            if [ -f "$CONFIGS_DIR/$candidate" ]; then
+              DEFCONFIG="$candidate"
+              echo "✅ Using defconfig: $candidate"
+              break
+            fi
+          done
+
+          # Last resort: any file with 'miatoll' in name
+          if [ -z "$DEFCONFIG" ]; then
+            FOUND=$(find "$CONFIGS_DIR" -name "*miatoll*" | head -1)
+            if [ -n "$FOUND" ]; then
+              DEFCONFIG="${FOUND#$CONFIGS_DIR/}"
+              echo "✅ Wildcard match: $DEFCONFIG"
+            fi
+          fi
+
+          if [ -z "$DEFCONFIG" ]; then
+            echo "❌ No defconfig found! Listing all configs:"
+            find "$CONFIGS_DIR" | sort
+            exit 1
+          fi
+
           MAKE_ARGS=(
-            ARCH=${{ env.ARCH }}
+            ARCH=arm64
             CC=clang
             CROSS_COMPILE=aarch64-linux-gnu-
             CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
@@ -295,10 +334,9 @@ jobs:
             -j$(nproc)
           )
 
-          # Load defconfig
-          make "${MAKE_ARGS[@]}" ${{ env.DEFCONFIG }}
+          make "${MAKE_ARGS[@]}" "$DEFCONFIG"
 
-          # Merge Droidspaces config if LXC enabled
+          # Merge Droidspaces LXC config if enabled
           if [ "${{ github.event.inputs.ENABLE_LXC }}" = "true" ]; then
             echo "Merging Droidspaces LXC config..."
             ./scripts/kconfig/merge_config.sh -m \
@@ -308,14 +346,14 @@ jobs:
             echo "LXC config merged."
           fi
 
-          # Set kernel local version
+          # Set kernel local version suffix
           ./scripts/config \
             --file ${{ env.OUT_DIR }}/.config \
             --set-str LOCALVERSION "${{ github.event.inputs.KERNEL_NAME }}"
           make "${MAKE_ARGS[@]}" olddefconfig
 
           echo "=== Final config summary ==="
-          grep -E "^CONFIG_(NAMESPACES|CGROUPS|OVERLAY|KSU|POSIX_MQUEUE|BPF_SYSCALL|USER_NS)=" \
+          grep -E "^CONFIG_(NAMESPACES|CGROUPS|OVERLAY_FS|POSIX_MQUEUE|BPF_SYSCALL|USER_NS|LOCALVERSION)=" \
             ${{ env.OUT_DIR }}/.config || true
 
       # ── 11. Compile the kernel ────────────────────────────────────────────
